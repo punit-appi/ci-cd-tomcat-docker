@@ -1,0 +1,51 @@
+pipeline {
+    agent { label 'app_build' } 
+    stages {
+        stage('Clone Repository') {
+            steps {
+             git branch: 'main', url: 'https://github.com/punit-appi/java_task.git'
+            }
+        }
+        stage('Install Docker') {
+            steps {
+                sh '''
+                    sudo yum update -y 
+                    sudo yum install -y docker
+                    sudo systemctl start docker
+                    sudo systemctl enable docker
+                   
+                   
+                '''
+            }
+        }
+           stage('Pull Tomcat Docker Image') {
+            steps {
+                sh 'docker pull tomcat:latest'
+            }
+        }
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', 
+                                                 usernameVariable: 'DOCKER_USER', 
+                                                 passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    '''
+                }
+            }
+        }
+          stage('Push Tomcat Docker Image') {
+            steps {
+                sh '''
+                    docker tag tomcat:latest punit1/tomcat:latest
+                    docker push punit1/tomcat:latest
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Pipeline completed'
+        }
+    }
+}
